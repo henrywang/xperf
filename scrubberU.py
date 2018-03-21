@@ -11,7 +11,7 @@ import argparse
 from utils import HWLogging
 
 
-def translator(result_file, datetime_obj):
+def translator(result_file, datetime_obj, load):
     """Translate each line of result file into a comma seperated string.
 
     Return a generator, NOT a list or tuple.
@@ -26,18 +26,6 @@ def translator(result_file, datetime_obj):
         '(0%)',
         '0.068/', '0.040/', '0.990/', '0.041', 'ms',
         '153601', 'pps'
-    ]
-    or
-    [
-        '[', '3]',
-        '0.00-10.00', 'sec',
-        '187', 'MBytes',
-        '157', 'Mbits/sec',
-        '0.005', 'ms',
-        '414/1536026',
-        '(0.027%)',
-        '0.002/-0.030/', '2.248/', '0.059', 'ms',
-        '153561', 'pps'
     ]
 
     Translated sample:
@@ -56,29 +44,24 @@ def translator(result_file, datetime_obj):
                     timestamp.strftime('%m/%d/%Y %H:%M:%S'))
                     )
 
-                # yielded string fields
+                # solid fields format in output string
                 timestamp_str = timestamp.strftime('%m/%d/%Y %H:%M:%S')
                 transfer = fields[4].strip()
                 bandwidth = fields[6].strip()
                 lost = fields[10].split('/')[0].strip()
                 total = fields[10].split('/')[1].strip()
+                pps = fields[-2].strip()
 
-                if len(fields) == 19:
-                    # normal situation '0.068/', '0.040/', '0.990/', '0.041'
-                    latency_avg = fields[12][:-1].strip()
-                    latency_min = fields[13][:-1].strip()
-                    latency_max = fields[14][:-1].strip()
-                    latency_stdev = fields[15].strip()
-                    pps = fields[17].strip()
-                else:
-                    # latency encounters '0.002/-0.030/', '2.248/', '0.059'
-                    latency_avg = fields[12][:-1].strip().split('/')[0]
-                    latency_min = fields[12][:-1].strip().split('/')[1]
-                    latency_max = fields[13][:-1].strip()
-                    latency_stdev = fields[14].strip()
-                    pps = fields[16].strip()
-                yield "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}".format(
-                    timestamp_str, transfer, bandwidth, lost, total,
+                # different scenarios:
+                # '0.068/', '0.040/', '0.990/', '0.041', 'ms'
+                # '0.002/-0.030/', '2.248/', '0.059', 'ms'
+                # '0.072/', '0.000/10.274/', '0.324', 'ms'
+                latency = ''.join(fields[12:-3]).split('/')
+                latency_avg, latency_min, latency_max, latency_stdev = latency
+
+                # yielded string fields
+                yield "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}, {10}".format(
+                    timestamp_str, load, transfer, bandwidth, lost, total,
                     latency_avg, latency_min, latency_max, latency_stdev, pps
                 )
 
@@ -134,6 +117,7 @@ def scrubber(result_path, c_or_s):
         # test/files/run1-150M-client.iperf
         # => test/files/run1-client.iperf.csv
         tmp_name_parts = os.path.basename(file_name).split('-')
+        load = tmp_name_parts[1][:-1]
         tmp_name_string = "{0}-{1}.csv".format(
             tmp_name_parts[0],
             tmp_name_parts[2]
@@ -162,7 +146,7 @@ def scrubber(result_path, c_or_s):
 
         # write parsed content into disk.
         with open(csv_file_name, 'a') as f:
-            for x in translator(file_name, datetime_obj):
+            for x in translator(file_name, datetime_obj, load):
                 f.write("{0}\n".format(x))
 
 
