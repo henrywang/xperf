@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euf
+set -eufx
 
 STOP_DSTAT="kill \$(ps -ef | grep dstat | grep -v grep | awk '{print \$2}') >/dev/null 2>&1 || true"
 STOP_IPERF="killall iperf >/dev/null 2>&1 || true"
@@ -44,6 +44,17 @@ RunIperfOverSSH() {
     esac
 }
 
+# reboot client and server, wait ssh ready
+ResetOverSSH() {
+    rpm -qa | grep nmap || yum -y install nmap
+    ExecCommandOverSSH "client" "reboot" || true
+    ExecCommandOverSSH "server" "reboot" || true
+    while : ;
+    do
+        nmap -p22 ${CLIENT_IP} -oG - | grep -q 22/open && nmap -p22 ${SERVER_IP} -oG - | grep -q 22/open && break
+    done
+}
+
 # clear result folder if exists
 ExecCommandOverSSH "client" "rm -rf ${RESULT_DIR}"
 ExecCommandOverSSH "server" "rm -rf ${RESULT_DIR}"
@@ -65,6 +76,9 @@ ExecCommandOverSSH "client" "[ ! -e /usr/local/bin/dstat ]" && scp $DSTAT_FILE $
 ExecCommandOverSSH "server" "[ ! -e /usr/local/bin/dstat ]" && scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
 
 for ((i=1; i<=${ITERATIONS}; i++)); do
+    # reboot client and server
+    ResetOverSSH
+    
     # stop dstat on both sides
     ExecCommandOverSSH "client" "$STOP_DSTAT"
     ExecCommandOverSSH "server" "$STOP_DSTAT"
