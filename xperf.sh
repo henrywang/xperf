@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eufx
+set -euf
 
 STOP_DSTAT="kill \$(ps -ef | grep dstat | grep -v grep | awk '{print \$2}') >/dev/null 2>&1 || true"
 STOP_IPERF="killall iperf >/dev/null 2>&1 || true"
@@ -55,13 +55,21 @@ ResetOverSSH() {
     done
 }
 
+# collect result file
+CollectResult() {
+    LOCAL_DIR="${TEST_NAME}-${RESULT_DIR}"
+    [[ -d $LOCAL_DIR ]] || mkdir -p $LOCAL_DIR
+    scp ${IPERF_USER}@${CLIENT_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+    scp ${IPERF_USER}@${SERVER_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+}
+
 # clear result folder if exists
 ExecCommandOverSSH "client" "rm -rf ${RESULT_DIR}"
 ExecCommandOverSSH "server" "rm -rf ${RESULT_DIR}"
 
 # creat result folder
-ExecCommandOverSSH "client" "mkdir ${RESULT_DIR}"
-ExecCommandOverSSH "server" "mkdir ${RESULT_DIR}"
+ExecCommandOverSSH "client" "mkdir -p ${RESULT_DIR}"
+ExecCommandOverSSH "server" "mkdir -p ${RESULT_DIR}"
 
 # stop iperf and dstat on both sides
 ExecCommandOverSSH "client" "$STOP_IPERF"
@@ -69,11 +77,11 @@ ExecCommandOverSSH "server" "$STOP_IPERF"
 ExecCommandOverSSH "client" "$STOP_DSTAT"
 ExecCommandOverSSH "server" "$STOP_DSTAT"
 
-ExecCommandOverSSH "client" "[ ! -e /usr/local/bin/dstat ]" && scp $IPERF_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
-ExecCommandOverSSH "server" "[ ! -e /usr/local/bin/dstat ]" && scp $IPERF_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
 
-ExecCommandOverSSH "client" "[ ! -e /usr/local/bin/dstat ]" && scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
-ExecCommandOverSSH "server" "[ ! -e /usr/local/bin/dstat ]" && scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
 
 for ((i=1; i<=${ITERATIONS}; i++)); do
     # reboot client and server
@@ -110,3 +118,6 @@ for ((i=1; i<=${ITERATIONS}; i++)); do
     ExecCommandOverSSH "client" "$STOP_DSTAT"
     ExecCommandOverSSH "server" "$STOP_DSTAT"
 done
+
+# copy result files back to local
+CollectResult
