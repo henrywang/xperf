@@ -49,6 +49,7 @@ ResetOverSSH() {
     rpm -qa | grep nmap || yum -y install nmap
     ExecCommandOverSSH "client" "reboot" || true
     ExecCommandOverSSH "server" "reboot" || true
+    sleep 1
     while : ;
     do
         nmap -p22 ${CLIENT_IP} -oG - | grep -q 22/open && nmap -p22 ${SERVER_IP} -oG - | grep -q 22/open && break
@@ -61,6 +62,12 @@ CollectResult() {
     [[ -d $LOCAL_DIR ]] || mkdir -p $LOCAL_DIR
     scp ${IPERF_USER}@${CLIENT_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
     scp ${IPERF_USER}@${SERVER_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+}
+
+# system settings
+SetSystem() {
+    ExecCommandOverSSH "client" "sysctl -w net.core.rmem_default=$RMEM_DEFAULT && sysctl -w net.core.rmem_max=$RMEM_MAX"
+    ExecCommandOverSSH "server" "sysctl -w net.core.rmem_default=$RMEM_DEFAULT && sysctl -w net.core.rmem_max=$RMEM_MAX"
 }
 
 # clear result folder if exists
@@ -83,9 +90,13 @@ ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE $
 ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
 ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
 
-for ((i=1; i<=${ITERATIONS}; i++)); do
+for ((i=1; i<=${ITERATIONS}; i++));
+do
     # reboot client and server
     ResetOverSSH
+
+    # system setting
+    SetSystem
     
     # stop dstat on both sides
     ExecCommandOverSSH "client" "$STOP_DSTAT"
@@ -96,7 +107,8 @@ for ((i=1; i<=${ITERATIONS}; i++)); do
     RunDstatOverSSH "client" $i
     RunDstatOverSSH "server" $i
     
-    for bandwidth in ${LOAD[*]}; do
+    for bandwidth in ${LOAD[*]};
+    do
         echo -e "Run${i}: start iperf on ${LOAD[*]}\n-----------------"
         # stop iperf
         ExecCommandOverSSH "client" "$STOP_IPERF"
@@ -119,5 +131,4 @@ for ((i=1; i<=${ITERATIONS}; i++)); do
     ExecCommandOverSSH "server" "$STOP_DSTAT"
 done
 
-# copy result files back to local
 CollectResult
