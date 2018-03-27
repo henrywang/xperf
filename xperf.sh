@@ -5,9 +5,20 @@ set -euf
 STOP_DSTAT="kill \$(ps -ef | grep dstat | grep -v grep | awk '{print \$2}') >/dev/null 2>&1 || true"
 STOP_IPERF="killall iperf >/dev/null 2>&1 || true"
 
+if [ $# -eq 0 ]; then
+    WORKLOAD="workload.conf"
+    XPERF="xperf.conf"
+elif [ $# -eq 2 ]; then
+    WORKLOAD=$1
+    XPERF=$2
+else
+    echo "$0: usage: xperf <workload config> <xperf config>"
+    exit 1
+fi
+
 # load xperf config and workload
-. workload.conf
-. xperf.conf
+. $WORKLOAD
+. $XPERF
 
 ExecCommandOverSSH() {
     case $1 in
