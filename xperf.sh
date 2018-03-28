@@ -23,11 +23,11 @@ fi
 ExecCommandOverSSH() {
     case $1 in
         "client")
-            ssh -q -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${CLIENT_IP} $2
+            ssh -q -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${CLIENT_IP_MGT} $2
             return $?
             ;;
         "server")
-            ssh -q -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${SERVER_IP} $2
+            ssh -q -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${SERVER_IP_MGT} $2
             return $?
             ;;
         *)
@@ -45,7 +45,7 @@ RunDstatOverSSH() {
 RunIperfOverSSH() {
     case $1 in
         "client")
-            ExecCommandOverSSH $1 "echo \$(date +%Y%m%d_%H%M%S) | tee ${RESULT_DIR}/run$2-$3-$1.iperf && iperf -u -c ${SERVER_IP} -d -b $3 -t ${DURATION} -i ${INTERVAL} -B ${CLIENT_IP} -L ${CLIENT_PORT} -e -x CSV -p ${SERVER_PORT} -l ${UDP_PAYLOAD} | tee -a ${RESULT_DIR}/run$2-$3-$1.iperf";;
+            ExecCommandOverSSH $1 "echo \$(date +%Y%m%d_%H%M%S) | tee ${RESULT_DIR}/run$2-$3-$1.iperf && iperf -u -c ${SERVER_IP_IPERF} -d -b $3 -t ${DURATION} -i ${INTERVAL} -B ${CLIENT_IP_IPERF} -L ${CLIENT_PORT} -e -x CSV -p ${SERVER_PORT} -l ${UDP_PAYLOAD} | tee -a ${RESULT_DIR}/run$2-$3-$1.iperf";;
         "server")
             ExecCommandOverSSH $1 "nohup iperf -s -i ${INTERVAL} -u -e -p ${SERVER_PORT} -x CSV > ${RESULT_DIR}/run$2-$3-$1.iperf &";;
         *)
@@ -63,7 +63,7 @@ ResetOverSSH() {
     sleep 1
     while : ;
     do
-        nmap -p22 ${CLIENT_IP} -oG - | grep -q 22/open && nmap -p22 ${SERVER_IP} -oG - | grep -q 22/open && break
+        nmap -p22 ${CLIENT_IP_MGT} -oG - | grep -q 22/open && nmap -p22 ${SERVER_IP_MGT} -oG - | grep -q 22/open && break
     done
 }
 
@@ -71,8 +71,8 @@ ResetOverSSH() {
 CollectResult() {
     LOCAL_DIR="${TEST_NAME}-${RESULT_DIR}"
     [[ -d $LOCAL_DIR ]] || mkdir -p $LOCAL_DIR
-    scp ${IPERF_USER}@${CLIENT_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
-    scp ${IPERF_USER}@${SERVER_IP}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+    scp ${IPERF_USER}@${CLIENT_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+    scp ${IPERF_USER}@${SERVER_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
 }
 
 # system settings
@@ -95,11 +95,11 @@ ExecCommandOverSSH "server" "$STOP_IPERF"
 ExecCommandOverSSH "client" "$STOP_DSTAT"
 ExecCommandOverSSH "server" "$STOP_DSTAT"
 
-ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
-ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
 
-ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP}:/usr/local/bin
-ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
 
 for ((i=1; i<=${ITERATIONS}; i++));
 do
