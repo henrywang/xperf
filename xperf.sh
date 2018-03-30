@@ -71,8 +71,8 @@ ResetOverSSH() {
 CollectResult() {
     LOCAL_DIR="${TEST_NAME}-${RESULT_DIR}"
     [[ -d $LOCAL_DIR ]] || mkdir -p $LOCAL_DIR
-    scp ${IPERF_USER}@${CLIENT_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
-    scp ${IPERF_USER}@${SERVER_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+    scp -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${CLIENT_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
+    scp -i ${SSH_PRIVATE_KEY} ${IPERF_USER}@${SERVER_IP_MGT}:\$HOME/${RESULT_DIR}/* $LOCAL_DIR
 }
 
 # system settings
@@ -95,11 +95,11 @@ ExecCommandOverSSH "server" "$STOP_IPERF"
 ExecCommandOverSSH "client" "$STOP_DSTAT"
 ExecCommandOverSSH "server" "$STOP_DSTAT"
 
-ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
-ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $IPERF_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp -i ${SSH_PRIVATE_KEY} $IPERF_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp -i ${SSH_PRIVATE_KEY} $IPERF_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
 
-ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
-ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp $DSTAT_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "client" "[[ -e /usr/local/bin/dstat ]]" || scp -i ${SSH_PRIVATE_KEY} $DSTAT_FILE ${IPERF_USER}@${CLIENT_IP_MGT}:/usr/local/bin
+ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp -i ${SSH_PRIVATE_KEY} $DSTAT_FILE ${IPERF_USER}@${SERVER_IP_MGT}:/usr/local/bin
 
 for ((i=1; i<=${ITERATIONS}; i++));
 do
