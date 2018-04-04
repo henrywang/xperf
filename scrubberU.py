@@ -118,8 +118,10 @@ def list_files(result_path, client_or_server):
     """Put all client/server result file name into a list."""
     # best alternative for switch/case
     pat_endswith = {
-        'client': 'client.iperf',
-        'server': 'server.iperf'
+        'client1': 'client1.iperf',
+        'client2': 'client2.iperf',
+        'server1': 'server1.iperf',
+        'server2': 'server2.iperf'
     }
     # return a generator instead of a list or tuple to save memory
     return (
@@ -179,7 +181,7 @@ def scrubber(result_path, c_or_s):
         # get timestamp from client result file
         # server result file does not contain timestamp
         # needs to get it from client result file with the same bandwidth
-        if 'server.iperf' in file_name:
+        if 'server' in file_name and '.iperf' in file_name:
             date_file = file_name.replace('server', 'client')
         else:
             date_file = file_name
@@ -203,8 +205,10 @@ def main(scrubber_args):
     # print all avaliable arguments passed in.
     result_path = scrubber_args.result_path
     logger.info("Start cleaning result file in: {0}.".format(result_path))
-    scrubber(result_path, 'client')
-    scrubber(result_path, 'server')
+    scrubber(result_path, 'client1')
+    scrubber(result_path, 'client2')
+    scrubber(result_path, 'server1')
+    scrubber(result_path, 'server2')
 
 
 if __name__ == '__main__':

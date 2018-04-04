@@ -3,7 +3,7 @@
 set -euf
 
 STOP_DSTAT="kill \$(ps -ef | grep dstat | grep -v grep | awk '{print \$2}') >/dev/null 2>&1 || true"
-STOP_IPERF="killall iperf >/dev/null 2>&1 || true"
+STOP_IPERF="pkill iperf >/dev/null 2>&1 || true"
 
 if [ $# -eq 0 ]; then
     WORKLOAD="workload.conf"
@@ -45,9 +45,13 @@ RunDstatOverSSH() {
 RunIperfOverSSH() {
     case $1 in
         "client")
-            ExecCommandOverSSH $1 "echo \$(date +%Y%m%d_%H%M%S) | tee ${RESULT_DIR}/run$2-$3-$1.iperf && iperf -u -c ${SERVER_IP_IPERF} -d -b $3 -t ${DURATION} -i ${INTERVAL} -B ${CLIENT_IP_IPERF} -L ${CLIENT_PORT} -e -x CSV -p ${SERVER_PORT} -l ${UDP_PAYLOAD} | tee -a ${RESULT_DIR}/run$2-$3-$1.iperf";;
+            ExecCommandOverSSH $1 "echo \$(date +%Y%m%d_%H%M%S) > ${RESULT_DIR}/run$2-$3-$11.iperf; nohup iperf -u -c ${SERVER_IP_IPERF} -d -b $3 -t ${DURATION} -i ${INTERVAL} -B ${CLIENT_IP_IPERF} -L ${CLIENT_PORT} -e -x CSV -p ${SERVER_PORT} -l ${UDP_PAYLOAD} >> ${RESULT_DIR}/run$2-$3-$11.iperf &"
+            ExecCommandOverSSH $1 "echo \$(date +%Y%m%d_%H%M%S) | tee ${RESULT_DIR}/run$2-$3-$12.iperf; iperf -u -c ${SERVER_IP_IPERF} -d -b $3 -t ${DURATION} -i ${INTERVAL} -B ${CLIENT_IP_IPERF} -L ${CLIENT_PORT_SEC} -e -x CSV -p ${SERVER_PORT_SEC} -l ${UDP_PAYLOAD} | tee -a ${RESULT_DIR}/run$2-$3-$12.iperf"
+            ;;
         "server")
-            ExecCommandOverSSH $1 "nohup iperf -s -i ${INTERVAL} -u -e -p ${SERVER_PORT} -x CSV > ${RESULT_DIR}/run$2-$3-$1.iperf &";;
+            ExecCommandOverSSH $1 "nohup iperf -s -i ${INTERVAL} -u -e -p ${SERVER_PORT} -x CSV > ${RESULT_DIR}/run$2-$3-$11.iperf &"
+            ExecCommandOverSSH $1 "nohup iperf -s -i ${INTERVAL} -u -e -p ${SERVER_PORT_SEC} -x CSV > ${RESULT_DIR}/run$2-$3-$12.iperf &"
+            ;;
         *)
             echo -e "Sorry, I can not get what you want"
             return 1
