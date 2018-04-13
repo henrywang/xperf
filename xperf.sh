@@ -5,10 +5,10 @@ set -euf
 STOP_DSTAT="kill \$(ps -ef | grep dstat | grep -v grep | awk '{print \$2}') >/dev/null 2>&1 || true"
 STOP_IPERF="pkill iperf >/dev/null 2>&1 || true"
 
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
     WORKLOAD="workload.conf"
     XPERF="xperf.conf"
-elif [ $# -eq 2 ]; then
+elif [[ $# -eq 2 ]]; then
     WORKLOAD=$1
     XPERF=$2
 else
@@ -89,6 +89,23 @@ SetSystem() {
     ExecCommandOverSSH "server" "sysctl -w net.core.rmem_default=$RMEM_DEFAULT && sysctl -w net.core.rmem_max=$RMEM_MAX"
 }
 
+# run ethtool -S on traffic interface
+GetNICStat() {
+    NIC_NAME_CMD="ip add | grep -B2 $2 | head -1 | awk '{print \$2}' | sed -e 's/://'"
+    case $1 in
+        "client")
+            ExecCommandOverSSH "client" "ethtool -S \$($NIC_NAME_CMD) > ${RESULT_DIR}/client-run$3.ethtool"
+            ;;
+        "server")
+            ExecCommandOverSSH "server" "ethtool -S \$($NIC_NAME_CMD) > ${RESULT_DIR}/server-run$3.ethtool"
+            ;;
+        *)
+            echo -e "Sorry, I can not get what you want"
+            return 1
+            ;;
+    esac
+}
+
 # clear result folder if exists
 ExecCommandOverSSH "client" "rm -rf $RESULT_DIR"
 ExecCommandOverSSH "server" "rm -rf $RESULT_DIR"
@@ -112,10 +129,10 @@ ExecCommandOverSSH "server" "[[ -e /usr/local/bin/dstat ]]" || scp -i "$SSH_PRIV
 for ((i=1; i<="$ITERATIONS"; i++));
 do
     # reboot client and server
-    ResetOverSSH
+    # ResetOverSSH
 
-    # system setting
-    SetSystem
+    # # system setting
+    # SetSystem
     
     # stop dstat on both sides
     ExecCommandOverSSH "client" "$STOP_DSTAT"
@@ -148,6 +165,10 @@ do
     # stop dstat
     ExecCommandOverSSH "client" "$STOP_DSTAT"
     ExecCommandOverSSH "server" "$STOP_DSTAT"
+    # run ethtool
+    GetNICStat "client" "$CLIENT_IP_IPERF" $i
+    GetNICStat "server" "$SERVER_IP_IPERF" $i
+
 done
 
 CollectResult
